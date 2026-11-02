@@ -1,0 +1,48 @@
+version: 2
+project_name: plib
+
+builds:
+  - id: darwin
+    main: ./cmd/plib
+    binary: plib
+    env: [CGO_ENABLED=0]
+    goos: [darwin]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w
+      - -X github.com/illegalstudio/prompt-library/internal/version.Version={{.Version}}
+      - -X github.com/illegalstudio/prompt-library/internal/version.Commit={{.ShortCommit}}
+    hooks:
+      post:
+        - scripts/codesign.sh {{ .Path }}
+  - id: portable
+    main: ./cmd/plib
+    binary: plib
+    env: [CGO_ENABLED=0]
+    goos: [linux, windows]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w
+      - -X github.com/illegalstudio/prompt-library/internal/version.Version={{.Version}}
+      - -X github.com/illegalstudio/prompt-library/internal/version.Commit={{.ShortCommit}}
+
+archives:
+  - formats: [tar.gz]
+    name_template: 'plib_{{ .Version }}_{{ .Os }}_{{ .Arch }}'
+    format_overrides:
+      - goos: darwin
+        formats: [zip]
+      - goos: windows
+        formats: [zip]
+    files: [README.md, LICENSE]
+
+checksum:
+  name_template: 'plib_{{ .Version }}_checksums.txt'
+
+release:
+  draft: false
+
+changelog:
+  sort: asc
+  filters:
+    exclude: ['^docs:', '^test:', '^chore:']

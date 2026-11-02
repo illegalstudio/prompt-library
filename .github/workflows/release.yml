@@ -1,0 +1,68 @@
+name: Release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - run: go test -race ./...
+      - run: go vet ./...
+      - name: Import Apple signing certificate
+        env:
+          APPLE_CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for key in APPLE_CERTIFICATE_P12 APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY APPLE_ID APPLE_TEAM_ID APPLE_APP_PASSWORD; do
+            if [[ -z "${!key}" ]]; then
+              echo "Missing repository or organization secret: $key" >&2
+              exit 1
+            fi
+          done
+          SIGN_DIR="$(mktemp -d "$RUNNER_TEMP/plib-sign.XXXXXX")"
+          echo "PLIB_SIGN_DIR=$SIGN_DIR" >> "$GITHUB_ENV"
+          KEYCHAIN_PASSWORD="$(openssl rand -hex 16)"
+          echo "::add-mask::$KEYCHAIN_PASSWORD"
+          printf '%s' "$APPLE_CERTIFICATE_P12" | base64 --decode > "$SIGN_DIR/certificate.p12"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$SIGN_DIR/signing.keychain-db"
+          security set-keychain-settings -lut 21600 "$SIGN_DIR/signing.keychain-db"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$SIGN_DIR/signing.keychain-db"
+          security import "$SIGN_DIR/certificate.p12" -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$SIGN_DIR/signing.keychain-db"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$SIGN_DIR/signing.keychain-db"
+          security list-keychains -d user -s "$SIGN_DIR/signing.keychain-db" login.keychain-db
+          rm "$SIGN_DIR/certificate.p12"
+      - name: Build, sign, notarize and publish
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          version: '~> v2'
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+      - name: Clean signing material
+        if: always()
+        run: |
+          if [[ -n "${PLIB_SIGN_DIR:-}" && -d "$PLIB_SIGN_DIR" ]]; then
+            security delete-keychain "$PLIB_SIGN_DIR/signing.keychain-db" || true
+            rm -rf "$PLIB_SIGN_DIR"
+          fi
