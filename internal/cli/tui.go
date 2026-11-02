@@ -105,6 +105,14 @@ func (m *model) beginAdd() {
 	m.body.Blur()
 	m.status = ""
 }
+
+func (m model) scopeProject() string {
+	if m.editing != nil && m.editing.Project != "" {
+		return m.editing.Project
+	}
+	return m.a.project
+}
+
 func (m *model) resize() {
 	w := max(20, m.width-6)
 	m.title.Width = w
@@ -220,9 +228,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.status = "Draft discarded"
 				return m, nil
 			case "tab":
-				if m.a.project != "" && m.editing == nil {
-					m.projectScope = !m.projectScope
+				if m.scopeProject() == "" {
+					m.status = "Project scope unavailable: add a Git remote to the current project, then restart plib."
+					return m, nil
 				}
+				m.projectScope = !m.projectScope
+				m.status = ""
 				return m, nil
 			case "enter":
 				if m.mode == "title" {
@@ -376,11 +387,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m model) save() (tea.Model, tea.Cmd) {
 	scope := ""
 	if m.projectScope {
-		scope = m.a.project
-	}
-	// Editing another project's prompt in the all-project view keeps its original scope.
-	if m.editing != nil && m.projectScope && m.editing.Project != "" {
-		scope = m.editing.Project
+		scope = m.scopeProject()
 	}
 	p, err := store.New(m.title.Value(), m.body.Value(), scope)
 	if err != nil {
@@ -403,15 +410,14 @@ func (m model) save() (tea.Model, tea.Cmd) {
 				if e != nil {
 					return e
 				}
-				if current.Title != m.editing.Title || current.Body != m.editing.Body {
+				if current.Title != m.editing.Title || current.Body != m.editing.Body || current.Project != m.editing.Project {
 					return fmt.Errorf("prompt changed in another process; reopen it before editing")
 				}
 				p.LastUsed = current.LastUsed
-				if current.Project != p.Project {
-					return fmt.Errorf("changing the scope of an existing prompt is not supported; add a new prompt in the desired scope")
+				if err := m.a.store.Replace(current, p); err != nil {
+					return err
 				}
-			}
-			if err := m.a.store.Save(p); err != nil {
+			} else if err := m.a.store.Save(p); err != nil {
 				return err
 			}
 			syncErr = m.a.repo.Sync()
@@ -436,12 +442,13 @@ func (m model) View() string {
 	} else if m.mode == "title" || m.mode == "body" {
 		label := "Global"
 		if m.projectScope {
-			label = m.a.project
-			if m.editing != nil {
-				label = m.editing.Project
-			}
+			label = m.scopeProject()
 		}
-		b.WriteString("  Scope: " + accent.Render(label) + "\n\n  Title\n  " + m.title.View() + "\n\n" + m.body.View() + "\n" + muted.Render("  Enter: next field / newline  |  Tab: scope  |  Ctrl+S: save\n  Ctrl+T: title  |  Esc: discard"))
+		scopeNote := ""
+		if m.scopeProject() == "" {
+			scopeNote = muted.Render(" (project needs a Git remote)")
+		}
+		b.WriteString("  Scope: " + accent.Render(label) + scopeNote + "\n\n  Title\n  " + m.title.View() + "\n\n" + m.body.View() + "\n" + muted.Render("  Enter: next field / newline  |  Tab: scope  |  Ctrl+S: save\n  Ctrl+T: title  |  Esc: discard"))
 	} else if m.mode == "manual" {
 		b.WriteString("  Clipboard unavailable. Select and copy the text manually.\n\n" + m.manual.View() + "\n\n" + muted.Render("  Up/Down: scroll  |  Enter/Esc: back"))
 	} else {

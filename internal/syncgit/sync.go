@@ -37,7 +37,7 @@ func (r Repo) Locked(fn func() error) error {
 func (r Repo) git(args ...string) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, "git", append([]string{"-c", "commit.gpgsign=false", "-c", "core.hooksPath=" + os.DevNull, "-c", "user.name=plib", "-c", "user.email=plib@localhost", "-C", r.Root}, args...)...)
+	cmd := exec.CommandContext(ctx, "git", append([]string{"-c", "commit.gpgsign=false", "-c", "merge.renames=false", "-c", "core.hooksPath=" + os.DevNull, "-c", "user.name=plib", "-c", "user.email=plib@localhost", "-C", r.Root}, args...)...)
 	cmd.WaitDelay = time.Second
 	for _, entry := range os.Environ() {
 		key, _, _ := strings.Cut(entry, "=")
@@ -115,6 +115,9 @@ func (r Repo) RemoveRemote() error {
 }
 
 func (r Repo) commit() error {
+	if err := r.resolveScopeCopies(); err != nil {
+		return err
+	}
 	if _, err := r.git("add", "--all"); err != nil {
 		return err
 	}
@@ -182,9 +185,56 @@ func (r Repo) Sync() error {
 		if _, err := r.git("rev-parse", "--verify", "HEAD"); err != nil {
 			return nil
 		}
+		if err := r.commit(); err != nil {
+			return err
+		}
 		if _, err := r.git("push", "--set-upstream", "origin", "HEAD:refs/heads/"+branch); err == nil {
 			return nil
 		} else if attempt == 2 {
+			return err
+		}
+	}
+	return nil
+}
+
+// Scope changes can put the same ID in two folders after concurrent moves or
+// an interrupted local move. Keep the latest edit and archive every alternative.
+func (r Repo) resolveScopeCopies() error {
+	s := store.Store{Root: r.Root}
+	prompts, _, err := s.List("", "", true)
+	if err != nil {
+		return err
+	}
+	sort.Slice(prompts, func(i, j int) bool {
+		if !prompts[i].Updated.Equal(prompts[j].Updated) {
+			return prompts[i].Updated.After(prompts[j].Updated)
+		}
+		return s.Path(prompts[i]) < s.Path(prompts[j])
+	})
+	seen := make(map[string]store.Prompt)
+	for _, p := range prompts {
+		winner, duplicate := seen[p.ID]
+		if !duplicate {
+			seen[p.ID] = p
+			continue
+		}
+		path := s.Path(p)
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		backup := fmt.Sprintf("%s.%d.conflicted", path, time.Now().UnixNano())
+		if err := store.AtomicWrite(r.Root, backup, data); err != nil {
+			return err
+		}
+		if p.LastUsed.After(winner.LastUsed) {
+			winner.LastUsed = p.LastUsed
+			if err := s.Save(winner); err != nil {
+				return err
+			}
+			seen[p.ID] = winner
+		}
+		if err := os.Remove(path); err != nil {
 			return err
 		}
 	}

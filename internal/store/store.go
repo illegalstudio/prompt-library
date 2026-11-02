@@ -83,6 +83,34 @@ func (s Store) Save(p Prompt) error {
 	return AtomicWrite(s.Root, s.Path(p), append(b, '\n'))
 }
 
+// Replace preserves a prompt's identity when moving it between scope folders.
+// The caller must hold the repository lock.
+func (s Store) Replace(original, updated Prompt) error {
+	if err := Validate(original); err != nil {
+		return err
+	}
+	if original.ID != updated.ID {
+		return errors.New("cannot change a prompt's ID")
+	}
+	oldPath, newPath := s.Path(original), s.Path(updated)
+	if oldPath == newPath {
+		return s.Save(updated)
+	}
+	if _, err := os.Lstat(newPath); err == nil {
+		return errors.New("a prompt already exists in the destination scope")
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	if err := s.Save(updated); err != nil {
+		return err
+	}
+	if err := os.Remove(oldPath); err != nil {
+		// Keep the original record if a scope move cannot finish.
+		return fmt.Errorf("move prompt: %w", errors.Join(err, os.Remove(newPath)))
+	}
+	return nil
+}
+
 func AtomicWrite(root, path string, b []byte) error {
 	root, err := filepath.Abs(root)
 	if err != nil {

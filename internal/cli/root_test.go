@@ -107,3 +107,119 @@ func TestEditorSupportsLongBodiesAndWaitsForTransaction(t *testing.T) {
 		t.Fatal("did not exit after transaction finished")
 	}
 }
+
+func TestEditorScopeSwitchAndSave(t *testing.T) {
+	for _, mode := range []string{"title", "body"} {
+		for _, kind := range []string{"new", "global", "project", "other-project"} {
+			t.Run(mode+"/"+kind, func(t *testing.T) {
+				t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
+				t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+				home := filepath.Join(t.TempDir(), "library")
+				a := app{store: store.Store{Root: home}, repo: syncgit.Repo{Root: home}, project: "github.com/acme/api"}
+				if kind == "other-project" {
+					a.project = ""
+				}
+				if err := a.repo.Locked(func() error {
+					if err := a.repo.Init(); err != nil {
+						return err
+					}
+					return a.repo.MarkConfigured()
+				}); err != nil {
+					t.Fatal(err)
+				}
+				original, _ := store.New("Review", "First line\nSecond line", "")
+				original.LastUsed = original.Created
+				if kind == "project" {
+					original.Project = a.project
+				}
+				if kind == "other-project" {
+					original.Project = "github.com/other/api"
+				}
+				if kind != "new" {
+					if err := a.store.Save(original); err != nil {
+						t.Fatal(err)
+					}
+				}
+				m := newModel(a)
+				m.busy = false
+				m.all = true
+				m.prompts, _, _ = a.store.List("", "", true)
+				key := "e"
+				if kind == "new" {
+					key = "a"
+				}
+				next, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(key)})
+				m = next.(model)
+				if kind == "new" {
+					m.title.SetValue(original.Title)
+					m.body.SetValue(original.Body)
+				}
+				if mode == "body" {
+					next, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+					m = next.(model)
+				}
+				next, _ = m.Update(tea.KeyMsg{Type: tea.KeyTab})
+				m = next.(model)
+				wantProject := kind == "new" || kind == "global"
+				if m.projectScope != wantProject {
+					t.Fatal("Tab did not switch scope")
+				}
+				label := "Global"
+				if wantProject {
+					label = a.project
+				}
+				if !strings.Contains(m.View(), "Scope: "+label) {
+					t.Fatalf("incorrect scope label: %s", m.View())
+				}
+				next, cmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlS})
+				m = next.(model)
+				if cmd == nil {
+					t.Fatal("save did not start")
+				}
+				result := cmd().(resultMsg)
+				if result.err != nil {
+					t.Fatal(result.err)
+				}
+				ps, warnings, err := a.store.List("", "", true)
+				if err != nil || len(warnings) > 0 || len(ps) != 1 {
+					t.Fatalf("scope move left duplicate or invalid records: %+v %v %v", ps, warnings, err)
+				}
+				p := ps[0]
+				scope := ""
+				if wantProject {
+					scope = a.project
+				}
+				if p.Project != scope || p.Title != original.Title || p.Body != original.Body {
+					t.Fatalf("unexpected saved prompt: %+v", p)
+				}
+				if kind != "new" && (p.ID != original.ID || !p.Created.Equal(original.Created) || !p.LastUsed.Equal(original.LastUsed)) {
+					t.Fatal("scope move changed prompt identity or usage")
+				}
+				if kind != "new" {
+					if _, err := os.Stat(a.store.Path(original)); !os.IsNotExist(err) {
+						t.Fatal("old scope file remains")
+					}
+				}
+			})
+		}
+	}
+}
+
+func TestEditorExplainsUnavailableProjectScope(t *testing.T) {
+	for _, mode := range []string{"title", "body"} {
+		t.Run(mode, func(t *testing.T) {
+			home := t.TempDir()
+			m := newModel(app{store: store.Store{Root: home}, repo: syncgit.Repo{Root: home}})
+			m.beginAdd()
+			if mode == "body" {
+				next, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+				m = next.(model)
+			}
+			next, _ := m.Update(tea.KeyMsg{Type: tea.KeyTab})
+			m = next.(model)
+			if m.projectScope || !strings.Contains(m.status, "Git remote") || !strings.Contains(m.View(), "project needs a Git remote") {
+				t.Fatal("missing explanation for unavailable scope")
+			}
+		})
+	}
+}

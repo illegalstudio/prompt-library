@@ -29,7 +29,7 @@ The first run asks for an optional Git remote. Leave it blank for local storage.
 
 In the editor, enter a title, press `Enter`, then write or paste a multiline body. `Enter` inserts newlines, `Ctrl+T` returns to the title, `Tab` toggles global/project scope, `Ctrl+S` saves, and `Esc` discards the draft. Prompts default to global scope. The initial list shows your saved prompts, with the most recently copied first; a new library starts empty.
 
-When editing, keep the original scope. To save a copy in another scope, add a new prompt. A library has no built-in example prompts.
+`Tab` works in both the title and body, including when editing an existing prompt. Saving a scope change moves the same prompt between the global and project folders, preserving its ID and usage history. When editing another project's prompt from the all-projects view, its original project remains the project option. If no portable project remote is available, the editor explains why only global scope is available. Add a remote to the current project and restart plib to enable project scope; the library's optional sync remote is separate. A library has no built-in example prompts.
 
 ## Commands
 
@@ -80,7 +80,7 @@ On startup, after saving or copying, and on `r`/`sync`, plib:
 1. Finishes an interrupted merge and commits pending local changes.
 2. Fetches and merges the remote default branch, including existing histories on another machine.
 3. Resolves compatible prompt fields independently and takes the latest usage timestamp.
-4. When content conflicts, keeps the local field and saves the remote record beside it as `*.conflicted`. If the local record is damaged and the remote record is valid, restores the valid record and archives the damaged one. Modify/delete conflicts keep the modified prompt and archive a copy.
+4. When content conflicts, keeps the local field and saves the remote record beside it as `*.conflicted`. If the local record is damaged and the remote record is valid, restores the valid record and archives the damaged one. Modify/delete conflicts keep the modified prompt and archive a copy. Concurrent scope changes keep the most recently updated copy, preserve the latest usage date, and archive the alternatives.
 5. Commits the resolution and pushes without force, retrying up to three times if another machine pushes concurrently.
 
 Recovery files are committed and synchronized. They are excluded from prompt lists. Inspect a `.conflicted` JSON record and use its content to edit or add a prompt, then remove the recovery file when no longer needed. `plib sync` commits that removal.

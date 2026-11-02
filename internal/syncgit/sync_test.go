@@ -296,3 +296,51 @@ func TestConflictRestoresValidRecordAndArchivesDamagedLocal(t *testing.T) {
 		t.Fatal("damaged version was lost")
 	}
 }
+
+func TestConcurrentScopeMovesPreserveOneUsablePrompt(t *testing.T) {
+	a, b, _, p := setupPair(t)
+	local := p
+	local.Project = "github.com/acme/a"
+	local.Updated = p.Updated.Add(time.Second)
+	local.LastUsed = p.Updated.Add(time.Hour)
+	if err := (store.Store{Root: a.Root}).Replace(p, local); err != nil {
+		t.Fatal(err)
+	}
+	remote := p
+	remote.Project = "github.com/acme/b"
+	remote.Updated = p.Updated.Add(2 * time.Second)
+	if err := (store.Store{Root: b.Root}).Replace(p, remote); err != nil {
+		t.Fatal(err)
+	}
+	syncRepo(t, a)
+	syncRepo(t, b)
+	clean(t, b)
+	ps, warnings, err := (store.Store{Root: b.Root}).List("", "", true)
+	if err != nil || len(warnings) != 0 || len(ps) != 1 {
+		for _, candidate := range []store.Prompt{local, remote} {
+			data, _ := os.ReadFile((store.Store{Root: b.Root}).Path(candidate))
+			t.Logf("scope %s: %s", candidate.Project, data)
+		}
+		t.Fatalf("concurrent scope moves left duplicate or invalid prompts: %+v %v %v", ps, warnings, err)
+	}
+	if ps[0].ID != p.ID {
+		t.Fatal("scope conflict lost prompt identity")
+	}
+	if ps[0].Project != remote.Project || !ps[0].LastUsed.Equal(local.LastUsed) {
+		t.Fatal("scope resolution lost the latest edit or usage")
+	}
+	archives, err := filepath.Glob((store.Store{Root: b.Root}).Path(local) + ".*.conflicted")
+	if err != nil || len(archives) != 1 {
+		t.Fatal("alternative scope was not archived")
+	}
+	data, err := os.ReadFile(archives[0])
+	var alternative store.Prompt
+	if err != nil || json.Unmarshal(data, &alternative) != nil || alternative.Project != local.Project {
+		t.Fatal("scope archive does not preserve the alternative record")
+	}
+	syncRepo(t, a)
+	clean(t, a)
+	if find(t, a, p.ID).Project != ps[0].Project {
+		t.Fatal("scope resolution did not propagate")
+	}
+}
