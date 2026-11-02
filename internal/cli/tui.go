@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/illegalstudio/prompt-library/internal/clipboard"
 	"github.com/illegalstudio/prompt-library/internal/store"
@@ -111,6 +112,55 @@ func (m model) scopeProject() string {
 		return m.editing.Project
 	}
 	return m.a.project
+}
+
+func (m model) listPageSize() int {
+	return max(1, (m.height-11)/2)
+}
+
+func (m model) promptRow(p store.Prompt, active bool) string {
+	width := max(1, m.width-4)
+	titleWidth := min(30, max(1, width/3))
+	scopeWidth := 16
+	label := scopeLabel(p)
+	if p.Project != "" {
+		label = p.Project[strings.LastIndex(p.Project, "/")+1:]
+	}
+	if width < 60 {
+		scopeWidth = 3
+		label = "G"
+		if p.Project != "" {
+			label = "P"
+		}
+	}
+	if width < 28 {
+		scopeWidth = 0
+	}
+	compact := func(s string, limit int) string {
+		tail := "..."
+		if limit < len(tail) {
+			tail = ""
+		}
+		return ansi.Truncate(strings.Join(strings.Fields(s), " "), limit, tail)
+	}
+	style := lipgloss.NewStyle()
+	prefix := "  "
+	if active {
+		style = selected
+		prefix = "> "
+	}
+	if width < 5 {
+		return "  " + prefix + style.Render(compact(p.Title, width))
+	}
+	columns := []string{style.Width(titleWidth).Render(compact(p.Title, titleWidth))}
+	bodyWidth := width - titleWidth - 2
+	if scopeWidth > 0 {
+		scope := "[" + compact(label, scopeWidth-2) + "]"
+		columns = append(columns, muted.Width(scopeWidth).Render(scope))
+		bodyWidth -= scopeWidth + 2
+	}
+	columns = append(columns, muted.Render(compact(p.Body, bodyWidth)))
+	return "  " + prefix + strings.Join(columns, "  ")
 }
 
 func (m *model) resize() {
@@ -288,9 +338,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "down", "j":
 			m.cursor = min(max(0, len(m.prompts)-1), m.cursor+1)
 		case "pgdown":
-			m.cursor = min(max(0, len(m.prompts)-1), m.cursor+max(1, (m.height-10)/3))
+			m.cursor = min(max(0, len(m.prompts)-1), m.cursor+m.listPageSize())
 		case "pgup":
-			m.cursor = max(0, m.cursor-max(1, (m.height-10)/3))
+			m.cursor = max(0, m.cursor-m.listPageSize())
 		case "s", "/":
 			if m.busy {
 				return m, nil
@@ -465,23 +515,16 @@ func (m model) View() string {
 		} else {
 			b.WriteString("\n")
 		}
-		rows := max(1, (m.height-11)/3)
+		rows := m.listPageSize()
 		start := 0
 		if m.cursor >= rows {
 			start = m.cursor - rows + 1
 		}
 		for i := start; i < min(len(m.prompts), start+rows); i++ {
-			p := m.prompts[i]
-			prefix := "  "
-			style := lipgloss.NewStyle()
-			if i == m.cursor {
-				prefix = "> "
-				style = selected
+			if i > start {
+				b.WriteByte('\n')
 			}
-			b.WriteString("  " + prefix + style.Render(preview(p.Title, max(10, m.width-10))) + "\n")
-			b.WriteString("    " + muted.Render(preview(p.Body, max(10, m.width-10))) + "\n")
-			label := scopeLabel(p)
-			b.WriteString("    " + muted.Render(preview(label, max(10, m.width-10))) + "\n")
+			b.WriteString(m.promptRow(m.prompts[i], i == m.cursor) + "\n")
 		}
 		if len(m.prompts) == 0 {
 			b.WriteString("  No prompts yet. Press a to add one.\n")
