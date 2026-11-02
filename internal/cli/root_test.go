@@ -55,6 +55,30 @@ func TestCLILocalWorkflow(t *testing.T) {
 		t.Fatal("reinitialization accepted")
 	}
 }
+
+func TestShowRemainsAvailableWithRecentGitLock(t *testing.T) {
+	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+	home := filepath.Join(t.TempDir(), "library")
+	if _, _, err := run(t, home, "", "init", "--local"); err != nil {
+		t.Fatal(err)
+	}
+	p, _ := store.New("Local", "Exact\nmultiline body\n", "")
+	if err := (store.Store{Root: home}).Save(p); err != nil {
+		t.Fatal(err)
+	}
+	lock := filepath.Join(home, ".git", "index.lock")
+	if err := os.WriteFile(lock, nil, 0600); err != nil {
+		t.Fatal(err)
+	}
+	out, warning, err := run(t, home, "", "show", p.ID)
+	if err != nil || out != p.Body || !strings.Contains(warning, "Sync pending; local data retained:") {
+		t.Fatalf("local read failed: out=%q warning=%q err=%v", out, warning, err)
+	}
+	if _, err := os.Stat(lock); err != nil {
+		t.Fatal("recent lock was removed")
+	}
+}
 func TestTypingAndScopeToggle(t *testing.T) {
 	m := newModel(app{store: store.Store{Root: t.TempDir()}, repo: syncgit.Repo{Root: t.TempDir()}, project: "github.com/acme/api"})
 	m.beginAdd()

@@ -37,8 +37,15 @@ func (r Repo) Locked(fn func() error) error {
 func (r Repo) git(args ...string) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
 	defer cancel()
+	return r.gitContext(ctx, args...)
+}
+
+func (r Repo) gitContext(ctx context.Context, args ...string) ([]byte, error) {
+	ctx, stop := gitSignalContext(ctx)
+	defer stop()
 	cmd := exec.CommandContext(ctx, "git", append([]string{"-c", "commit.gpgsign=false", "-c", "merge.renames=false", "-c", "core.hooksPath=" + os.DevNull, "-c", "user.name=plib", "-c", "user.email=plib@localhost", "-C", r.Root}, args...)...)
 	cmd.WaitDelay = time.Second
+	prepareGitCommand(cmd)
 	for _, entry := range os.Environ() {
 		key, _, _ := strings.Cut(entry, "=")
 		if key == "GIT_DIR" || key == "GIT_WORK_TREE" || key == "GIT_INDEX_FILE" || key == "GIT_COMMON_DIR" || key == "GIT_OBJECT_DIRECTORY" || key == "GIT_ALTERNATE_OBJECT_DIRECTORIES" || key == "GIT_CONFIG_COUNT" || strings.HasPrefix(key, "GIT_CONFIG_KEY_") || strings.HasPrefix(key, "GIT_CONFIG_VALUE_") || key == "GIT_TERMINAL_PROMPT" || key == "GIT_SSH_COMMAND" || key == "GCM_INTERACTIVE" {
@@ -49,6 +56,10 @@ func (r Repo) git(args ...string) ([]byte, error) {
 	cmd.Env = append(cmd.Env, "GIT_TERMINAL_PROMPT=0", "GIT_SSH_COMMAND=ssh -o BatchMode=yes -o ConnectTimeout=8 -o ServerAliveInterval=5 -o ServerAliveCountMax=1", "GCM_INTERACTIVE=never")
 	b, err := cmd.CombinedOutput()
 	if ctx.Err() != nil {
+		finishInterruptedGit(cmd)
+		if !errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			return b, fmt.Errorf("git %s interrupted", args[0])
+		}
 		return b, fmt.Errorf("git %s timed out", args[0])
 	}
 	if err != nil {
@@ -135,6 +146,9 @@ func (r Repo) commit() error {
 // Sync finishes local merges before reporting network failures. It never force-pushes.
 // The caller must hold Locked, including the prompt mutation that precedes Sync.
 func (r Repo) Sync() error {
+	if err := r.recoverIndexLock(gitProcessesRunning); err != nil {
+		return err
+	}
 	if _, err := os.Stat(filepath.Join(r.Root, ".git", "MERGE_HEAD")); err == nil {
 		if err := r.resolve(); err != nil {
 			return err

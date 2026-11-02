@@ -207,6 +207,8 @@ Recovery files are committed and synchronized. They are excluded from prompt lis
 
 A failed fetch or push leaves local prompts available and local changes committed. The UI and ordinary commands report pending synchronization and continue; `plib sync` exits nonzero when synchronization fails. Permissions, disk errors and invalid repository states can still require manual repair. Network commands have bounded timeouts. Cross-process OS locks in a sibling `~/.plib.lock` file protect save/merge/push transactions, and saves use atomic file replacement. There is no background daemon: synchronization runs during tool usage.
 
+If an interrupted Git command leaves `.git/index.lock`, synchronization recovers it automatically once it is at least one minute old and the system process list shows no Git processes. The unchanged regular file is archived as `.git/plib-recovered-index-<time>` before retrying synchronization. Recent locks, symlinks, active Git processes (including in other repositories), or an unavailable process list leave the lock intact and report pending synchronization; local prompts remain readable. On Linux and macOS, timeouts and handled termination signals stop Git and its helpers gracefully so Git can remove its own locks.
+
 ## Clipboard
 
 - macOS: `pbcopy`.
