@@ -115,7 +115,7 @@ func (m model) scopeProject() string {
 }
 
 func (m model) listPageSize() int {
-	return max(1, (m.height-11)/2)
+	return max(1, m.height-11)
 }
 
 func (m model) promptRow(p store.Prompt, active bool) string {
@@ -521,9 +521,6 @@ func (m model) View() string {
 			start = m.cursor - rows + 1
 		}
 		for i := start; i < min(len(m.prompts), start+rows); i++ {
-			if i > start {
-				b.WriteByte('\n')
-			}
 			b.WriteString(m.promptRow(m.prompts[i], i == m.cursor) + "\n")
 		}
 		if len(m.prompts) == 0 {
