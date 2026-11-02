@@ -223,28 +223,3 @@ make vet
 ```
 
 Tests use local temporary Git repositories and cover cross-machine bootstrap, independent histories, offline recovery, concurrent content edits, usage timestamps, modify/delete conflicts, interrupted merges, search, scope filtering and multiline input. CI runs tests, vet and builds on Linux, macOS and Windows for every push and pull request.
-
-## Versions and releases
-
-`make release` follows the sibling `ggw` and `ggg` workflow: propose the next semantic version, confirm, then push the branch and an annotated version tag atomically. It requires a clean checkout and an `origin` remote. The first proposed release is `v0.1.0`.
-
-A tag triggers GitHub Actions and GoReleaser automatically. Releases include Linux, macOS and Windows binaries for amd64 and arm64, plus SHA-256 checksums. Each macOS binary is signed with Developer ID, verified, and submitted to Apple before publication. A rejected notarization stops the release. Bare command-line binaries do not support ticket stapling.
-
-Configure these repository or organization secrets before the first release:
-
-| Secret | Value |
-| --- | --- |
-| `APPLE_CERTIFICATE_P12` | Base64-encoded Developer ID Application certificate with its private key |
-| `APPLE_CERTIFICATE_PASSWORD` | Password for that P12 file |
-| `APPLE_SIGNING_IDENTITY` | Full Developer ID Application identity |
-| `APPLE_ID` | Apple developer account email |
-| `APPLE_TEAM_ID` | Apple developer team ID |
-| `APPLE_APP_PASSWORD` | App-specific password for notarization |
-| `ILLEGAL_BOT_APP_ID` | GitHub App ID used to update the Homebrew tap, as in `ggw` |
-| `ILLEGAL_BOT_PRIVATE_KEY` | Private key for that GitHub App |
-
-`GITHUB_TOKEN` is supplied by GitHub Actions. The workflow fails if Apple credentials are missing, so an unsigned macOS release cannot be published accidentally. Signing material is imported into a temporary keychain and cleaned up even after failure.
-
-After GitHub publishes the signed release, the workflow uses the same Illegal Bot GitHub App as `ggw` to update `Formula/plib.rb` in [illegalstudio/homebrew-tap](https://github.com/illegalstudio/homebrew-tap). The App must be installed on that repository with Contents read/write permission, and its secrets must be available to this repository. Formula checksums come from the final release archives; publication uses GitHub CLI and does not require a separate long-lived tap token.
-
-To preview the generated formula without updating the tap, run `python3 scripts/publish-homebrew.py v0.1.0 --dist dist --dry-run` after producing the release archives. Homebrew installation becomes available after the first successful formula publication. Local source builds do not require Apple or GitHub App credentials.
