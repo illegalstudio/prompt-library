@@ -1,6 +1,33 @@
-# plib
+<p align="center">
+  <img src="assets/logo-transparent.png" alt="Prompt Library logo" width="180" height="180">
+</p>
 
-A small prompt library for your terminal. Run `plib`, pick a prompt, and paste it wherever you need it.
+<h1 align="center">Prompt Library</h1>
+
+<p align="center">
+  <em>Your prompts, wherever you work.</em>
+</p>
+
+<p align="center">
+  <a href="https://github.com/illegalstudio/prompt-library/stargazers"><img src="https://img.shields.io/github/stars/illegalstudio/prompt-library?style=flat-square&amp;logo=github&amp;logoColor=white&amp;label=stars&amp;color=7510F9" alt="Stars"></a>
+  <a href="https://github.com/illegalstudio/prompt-library/releases"><img src="https://img.shields.io/github/downloads/illegalstudio/prompt-library/total?style=flat-square&amp;logo=github&amp;logoColor=white&amp;label=downloads&amp;color=7510F9" alt="Downloads"></a>
+  <a href="https://github.com/illegalstudio/prompt-library/releases/latest"><img src="https://img.shields.io/github/v/release/illegalstudio/prompt-library?style=flat-square&amp;logo=github&amp;logoColor=white&amp;label=release&amp;color=7510F9" alt="Latest release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/illegalstudio/prompt-library?style=flat-square&amp;logoColor=white&amp;color=7510F9" alt="License: MIT"></a>
+</p>
+
+<p align="center">
+  <strong>Global &amp; project prompts &middot; Git sync &middot; Clipboard copy &middot; AI agent skill</strong>
+</p>
+
+<p align="center">
+  <code>plib</code> is a small Go CLI for building and reusing a prompt library. Search by title or body, keep global and project prompts in sync with Git, and copy the prompt you need straight to your clipboard.
+</p>
+
+<p align="center">
+  <a href="https://illegal.studio/en/products/prompt-library"><strong>Official website</strong></a>
+</p>
+
+---
 
 ## Installation
 
