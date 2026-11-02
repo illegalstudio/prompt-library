@@ -15,7 +15,7 @@ The first run asks for an optional Git remote. Leave it blank for local storage.
 
 ## Interactive keys
 
-Each prompt occupies one compact row with its title, scope and body preview. Entries appear on consecutive lines. On narrow terminals, `[G]` and `[P]` abbreviate global and project scope.
+Each prompt occupies one compact row with its title, scope and body preview. Entries appear on consecutive lines. The search field has a blank line above and below it. On narrow terminals, `[G]` and `[P]` abbreviate global and project scope.
 
 | Key | Action |
 | --- | --- |

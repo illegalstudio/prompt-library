@@ -115,7 +115,11 @@ func (m model) scopeProject() string {
 }
 
 func (m model) listPageSize() int {
-	return max(1, m.height-11)
+	rows := m.height - 11
+	if m.mode == "search" || m.search.Value() != "" {
+		rows -= 2
+	}
+	return max(1, rows)
 }
 
 func (m model) promptRow(p store.Prompt, active bool) string {
@@ -511,7 +515,7 @@ func (m model) View() string {
 		}
 		b.WriteString("  " + muted.Render(scope) + fmt.Sprintf("  (%d prompts)\n", len(m.prompts)))
 		if m.mode == "search" || m.search.Value() != "" {
-			b.WriteString("  " + m.search.View() + "\n")
+			b.WriteString("\n  " + m.search.View() + "\n\n")
 		} else {
 			b.WriteString("\n")
 		}
