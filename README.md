@@ -32,6 +32,15 @@ mise use github:illegalstudio/prompt-library      # or add it to this project's 
 
 The [GitHub backend](https://mise.jdx.dev/dev-tools/backends/github.html) selects the release archive for your OS and architecture. The installed command is `plib`. To pin a published version, append it to the tool name, for example `github:illegalstudio/prompt-library@0.1.0`.
 
+If mise reports a 404 from `mise-versions.jdx.dev` after the repository has just become public, query GitHub directly for this installation:
+
+```sh
+MISE_USE_VERSIONS_HOST=false MISE_MINIMUM_RELEASE_AGE=0s \
+  mise use -g github:illegalstudio/prompt-library
+```
+
+`MISE_USE_VERSIONS_HOST=false` bypasses the version catalog for this command. `MISE_MINIMUM_RELEASE_AGE=0s` allows a newly published release to be installed immediately.
+
 ### Direct download from GitHub
 
 Open the [latest GitHub release](https://github.com/illegalstudio/prompt-library/releases/latest) and download the archive for your platform, plus `plib_<version>_checksums.txt` from the same release:
