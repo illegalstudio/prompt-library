@@ -40,6 +40,7 @@ type model struct {
 	manual        viewport.Model
 	projectScope  bool
 	editing       *store.Prompt
+	deleting      *store.Prompt
 	busy          bool
 	quitting      bool
 	status        string
@@ -270,6 +271,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.manual, cmd = m.manual.Update(msg)
 			return m, cmd
 		}
+		if m.mode == "delete" {
+			switch key {
+			case "y", "Y":
+				return m.deletePrompt()
+			case "n", "N", "enter", "esc":
+				m.mode = "browse"
+				m.deleting = nil
+				m.status = "Deletion cancelled"
+			}
+			return m, nil
+		}
 		if m.mode == "title" || m.mode == "body" {
 			if m.busy {
 				return m, nil
@@ -379,6 +391,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.prompts = ps
 			}
 			return m, nil
+		case "d":
+			if !m.busy && len(m.prompts) > 0 {
+				p := m.prompts[m.cursor]
+				m.deleting = &p
+				m.mode = "delete"
+				m.status = ""
+			}
 		case "r":
 			if !m.busy {
 				m.busy = true
@@ -436,6 +455,46 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.search, cmd = m.search.Update(msg)
 	}
 	return m, cmd
+}
+
+func (m model) deletePrompt() (tea.Model, tea.Cmd) {
+	if m.deleting == nil || m.busy {
+		return m, nil
+	}
+	p := *m.deleting
+	m.mode = "browse"
+	m.deleting = nil
+	m.busy = true
+	m.status = "Deleting..."
+	return m, func() tea.Msg {
+		var syncErr error
+		err := m.a.repo.Locked(func() error {
+			current, err := m.a.store.Find(p.ID)
+			if err != nil {
+				return err
+			}
+			if current.Title != p.Title || current.Body != p.Body || current.Project != p.Project {
+				return fmt.Errorf("prompt changed in another process; select it again before deleting")
+			}
+			if err := m.a.store.Delete(current); err != nil {
+				return err
+			}
+			syncErr = m.a.repo.Sync()
+			return nil
+		})
+		if err != nil {
+			return resultMsg{err: err}
+		}
+		ps, _, err := m.a.store.List(m.a.project, m.search.Value(), m.all)
+		status := "Deleted: " + p.Title
+		if _, findErr := m.a.store.Find(p.ID); findErr == nil {
+			status = "Prompt changed during sync and was kept; review it before deleting again"
+		}
+		if syncErr != nil {
+			status += "; sync pending: " + syncErr.Error()
+		}
+		return resultMsg{prompts: ps, status: status, err: err, done: true}
+	}
 }
 
 func (m model) save() (tea.Model, tea.Cmd) {
@@ -530,7 +589,12 @@ func (m model) View() string {
 		if len(m.prompts) == 0 {
 			b.WriteString("  No prompts yet. Press a to add one.\n")
 		}
-		b.WriteString("\n" + muted.Render("  a add  |  s search  |  Enter copy  |  e edit\n  Tab all/current  |  r sync  |  Up/Down select  |  q quit"))
+		if m.mode == "delete" && m.deleting != nil {
+			b.WriteString(fmt.Sprintf("\n  Delete %q? [y/N]\n", preview(m.deleting.Title, max(5, m.width-25))))
+			b.WriteString(muted.Render("  y: delete  |  N / Enter / Esc: cancel"))
+		} else {
+			b.WriteString("\n" + muted.Render("  a add  |  s search  |  Enter copy  |  e edit  |  d delete\n  Tab all/current  |  r sync  |  Up/Down select  |  q quit"))
+		}
 	}
 	if m.status != "" {
 		b.WriteString("\n\n  " + muted.Render(preview(m.status, max(20, m.width-4))))

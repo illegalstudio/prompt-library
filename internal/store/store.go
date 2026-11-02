@@ -83,6 +83,14 @@ func (s Store) Save(p Prompt) error {
 	return AtomicWrite(s.Root, s.Path(p), append(b, '\n'))
 }
 
+// Delete removes one prompt. The caller must hold the repository lock.
+func (s Store) Delete(p Prompt) error {
+	if err := Validate(p); err != nil {
+		return err
+	}
+	return os.Remove(s.Path(p))
+}
+
 // Replace preserves a prompt's identity when moving it between scope folders.
 // The caller must hold the repository lock.
 func (s Store) Replace(original, updated Prompt) error {

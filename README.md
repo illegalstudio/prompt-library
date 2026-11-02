@@ -23,11 +23,14 @@ Each prompt occupies one compact row with its title, scope and body preview. Ent
 | `s` or `/` | Search titles and bodies |
 | `Enter` | Copy the selected prompt |
 | `e` | Edit the selected prompt |
+| `d` | Delete the selected prompt after a `[y/N]` confirmation |
 | `Tab` | Toggle current project/global prompts and every project |
 | `Up` / `Down`, `j` / `k` | Select a prompt |
 | `PageUp` / `PageDown` | Move through longer lists |
 | `r` | Synchronize with Git |
 | `q`, `Esc` | Quit |
+
+Press `d` in the list to delete the selected prompt. Confirm with `y` or `Y`; `Enter`, `n`, `N`, or `Esc` cancel. Deletions are committed and synchronized through Git. If the prompt changed while confirmation was open, or remote changes restore it during synchronization, review the updated prompt before confirming deletion again.
 
 In the editor, enter a title, press `Enter`, then write or paste a multiline body. `Enter` inserts newlines, `Ctrl+T` returns to the title, `Tab` toggles global/project scope, `Ctrl+S` saves, and `Esc` discards the draft. Prompts default to global scope. The initial list shows your saved prompts, with the most recently copied first; a new library starts empty.
 
