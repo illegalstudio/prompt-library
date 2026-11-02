@@ -20,7 +20,9 @@ jobs:
           cache: true
       - run: go test -race ./...
       - run: go vet ./...
-      - name: Import Apple signing certificate
+      - name: Test Homebrew publication
+        run: python3 -m unittest discover -s scripts -p 'test_publish_homebrew.py' -v
+      - name: Validate credentials and import Apple signing certificate
         env:
           APPLE_CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
@@ -28,9 +30,11 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          ILLEGAL_BOT_APP_ID: ${{ secrets.ILLEGAL_BOT_APP_ID }}
+          ILLEGAL_BOT_PRIVATE_KEY: ${{ secrets.ILLEGAL_BOT_PRIVATE_KEY }}
         run: |
           set -euo pipefail
-          for key in APPLE_CERTIFICATE_P12 APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY APPLE_ID APPLE_TEAM_ID APPLE_APP_PASSWORD; do
+          for key in APPLE_CERTIFICATE_P12 APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY APPLE_ID APPLE_TEAM_ID APPLE_APP_PASSWORD ILLEGAL_BOT_APP_ID ILLEGAL_BOT_PRIVATE_KEY; do
             if [[ -z "${!key}" ]]; then
               echo "Missing repository or organization secret: $key" >&2
               exit 1
@@ -59,6 +63,18 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+      - name: Mint Illegal Bot token for the tap
+        id: tap-token
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349
+        with:
+          app-id: ${{ secrets.ILLEGAL_BOT_APP_ID }}
+          private-key: ${{ secrets.ILLEGAL_BOT_PRIVATE_KEY }}
+          owner: illegalstudio
+          repositories: homebrew-tap
+      - name: Publish Homebrew formula
+        env:
+          GH_TOKEN: ${{ steps.tap-token.outputs.token }}
+        run: python3 scripts/publish-homebrew.py "$GITHUB_REF_NAME" --dist dist
       - name: Clean signing material
         if: always()
         run: |

@@ -2,16 +2,80 @@
 
 A small prompt library for your terminal. Run `plib`, pick a prompt, and paste it wherever you need it.
 
-## Build and run
+## Installation
 
-Requires Go 1.26.1+ and Git 2.28+.
+Requires Git 2.28+. Prebuilt binaries do not require Go. If the [releases page](https://github.com/illegalstudio/prompt-library/releases) is still empty, use the source installation below until the first release is published.
+
+### Homebrew
+
+On macOS or Linux:
 
 ```sh
+brew install illegalstudio/tap/plib
+```
+
+To update an existing installation:
+
+```sh
+brew update
+brew upgrade illegalstudio/tap/plib
+```
+
+### mise
+
+With [mise activated in your shell](https://mise.jdx.dev/getting-started.html#activate-mise):
+
+```sh
+mise use -g github:illegalstudio/prompt-library   # install globally
+mise use github:illegalstudio/prompt-library      # or add it to this project's mise.toml
+```
+
+The [GitHub backend](https://mise.jdx.dev/dev-tools/backends/github.html) selects the release archive for your OS and architecture. The installed command is `plib`. To pin a published version, append it to the tool name, for example `github:illegalstudio/prompt-library@0.1.0`.
+
+### Direct download from GitHub
+
+Open the [latest GitHub release](https://github.com/illegalstudio/prompt-library/releases/latest) and download the archive for your platform, plus `plib_<version>_checksums.txt` from the same release:
+
+| Platform | Architecture | Archive |
+| --- | --- | --- |
+| macOS, Apple Silicon | arm64 | `plib_<version>_darwin_arm64.zip` |
+| macOS, Intel | amd64 | `plib_<version>_darwin_amd64.zip` |
+| Linux, ARM64 | arm64 | `plib_<version>_linux_arm64.tar.gz` |
+| Linux, Intel/AMD 64-bit | amd64 | `plib_<version>_linux_amd64.tar.gz` |
+| Windows, ARM64 | arm64 | `plib_<version>_windows_arm64.zip` |
+| Windows, Intel/AMD 64-bit | amd64 | `plib_<version>_windows_amd64.zip` |
+
+You can also download assets with GitHub CLI. For example, for Linux amd64:
+
+```sh
+gh release download --repo illegalstudio/prompt-library \
+  --pattern 'plib_*_linux_amd64.tar.gz' \
+  --pattern 'plib_*_checksums.txt'
+```
+
+Compare the archive's SHA-256 hash with the checksum file before extracting it. Use `shasum -a 256 FILE` on macOS, `sha256sum FILE` on Linux, or `Get-FileHash FILE -Algorithm SHA256` in PowerShell, replacing `FILE` with the downloaded archive.
+
+Extract the archive with your archive manager, `unzip` for ZIP files, or `tar -xzf` for Linux archives. On macOS and Linux, run this from the extracted directory to install the binary for your user:
+
+```sh
+mkdir -p "$HOME/.local/bin"
+install -m 755 plib "$HOME/.local/bin/plib"
+```
+
+Ensure `~/.local/bin` is on your `PATH`. On Windows, place the extracted `plib.exe` in a directory on your `PATH`. The macOS release binaries are signed and notarized.
+
+### From source
+
+Requires Go 1.26.1+ in addition to Git:
+
+```sh
+git clone https://github.com/illegalstudio/prompt-library.git
+cd prompt-library
 make build
 ./plib
 ```
 
-The first run asks for an optional Git remote. Leave it blank for local storage. To install the binary on your Go bin path, run `make install`.
+Run `make install` to install the command on your Go bin path. After any installation, verify it with `plib --version`, then run `plib`. The first run asks for an optional Git remote for your prompt data. Leave it blank for local storage.
 
 ## Interactive keys
 
@@ -125,7 +189,11 @@ Configure these repository or organization secrets before the first release:
 | `APPLE_ID` | Apple developer account email |
 | `APPLE_TEAM_ID` | Apple developer team ID |
 | `APPLE_APP_PASSWORD` | App-specific password for notarization |
+| `ILLEGAL_BOT_APP_ID` | GitHub App ID used to update the Homebrew tap, as in `ggw` |
+| `ILLEGAL_BOT_PRIVATE_KEY` | Private key for that GitHub App |
 
 `GITHUB_TOKEN` is supplied by GitHub Actions. The workflow fails if Apple credentials are missing, so an unsigned macOS release cannot be published accidentally. Signing material is imported into a temporary keychain and cleaned up even after failure.
 
-This checkout initially has no remote. Publishing and actual Apple notarization require the GitHub repository and the secrets above. Local builds do not require Apple credentials.
+After GitHub publishes the signed release, the workflow uses the same Illegal Bot GitHub App as `ggw` to update `Formula/plib.rb` in [illegalstudio/homebrew-tap](https://github.com/illegalstudio/homebrew-tap). The App must be installed on that repository with Contents read/write permission, and its secrets must be available to this repository. Formula checksums come from the final release archives; publication uses GitHub CLI and does not require a separate long-lived tap token.
+
+To preview the generated formula without updating the tap, run `python3 scripts/publish-homebrew.py v0.1.0 --dist dist --dry-run` after producing the release archives. Homebrew installation becomes available after the first successful formula publication. Local source builds do not require Apple or GitHub App credentials.

@@ -2,3 +2,4 @@
 /plib.exe
 /dist/
 /coverage.out
+__pycache__/
