@@ -86,6 +86,30 @@ make build
 
 Run `make install` to install the command on your Go bin path. After any installation, verify it with `plib --version`, then run `plib`. The first run asks for an optional Git remote for your prompt data. Leave it blank for local storage.
 
+## AI agent skill
+
+The binary includes a skill that teaches AI agents how to work with your prompt library. Install it after installing or upgrading plib:
+
+```sh
+plib skills install
+plib skills verify
+```
+
+The installation menu preselects both destinations: `~/.agents/skills/plib` for Codex and other Agent Skills hosts, and `~/.claude/skills/plib` for Claude Code. For automation or a specific destination:
+
+```sh
+plib skills install --target agents
+plib skills install --target claude
+plib skills install --target agents --target claude
+plib skills verify --target agents --json
+```
+
+`--target` is repeatable, not comma-separated. `install --json` never prompts and installs both destinations unless targets are specified. `verify` never prompts or writes; `list` and `status` are aliases for it. These commands work without Git or an initialized prompt library. Skill installation paths use your user home, independently of the prompt data `--home` option.
+
+Reinstalling leaves current copies untouched and updates older managed copies if you have not edited them. Modified or unmanaged copies are protected; `plib skills install --target agents --force` explicitly replaces one. Verification reports `not-installed`, `up-to-date`, `outdated`, or `modified`. Missing copies are allowed; stale copies or per-destination errors cause a nonzero exit status. Installations also exit nonzero on a destination failure while still processing the other selected destination. JSON reports retain the full `installations` or `verifications` array on these failures.
+
+After successful interactive commands, plib reminds you if an installed copy is stale. Set `PLIB_SUPPRESS_SKILLS_NOTICE=1` to silence that reminder. Restart your agent if it does not discover the skill automatically. The bundled source is [skills/plib/SKILL.md](skills/plib/SKILL.md).
+
 ## Interactive keys
 
 Each prompt occupies one compact row with its title, scope and body preview. Entries appear on consecutive lines. The search field has a blank line above and below it. On narrow terminals, `[G]` and `[P]` abbreviate global and project scope.

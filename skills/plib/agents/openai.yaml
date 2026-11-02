@@ -1,0 +1,4 @@
+interface:
+  display_name: "plib"
+  short_description: "Find, save and reuse prompts from your library"
+  default_prompt: "Use $plib to find or save prompts in my library."

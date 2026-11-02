@@ -39,6 +39,9 @@ func NewCommand() *cobra.Command {
 		Version:      version.Version + " (" + version.Commit + ")",
 		SilenceUsage: true, SilenceErrors: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			if cmd.Hidden || cmd.Name() == "completion" || (cmd.Parent() != nil && cmd.Parent().Name() == "completion") {
+				return nil
+			}
 			var err error
 			if home == "" {
 				home, err = store.DefaultRoot()
@@ -62,6 +65,7 @@ func NewCommand() *cobra.Command {
 			}
 			return a.repo.Locked(a.repo.Init)
 		},
+		PersistentPostRun: func(cmd *cobra.Command, args []string) { maybeNoticeStaleSkills(cmd) },
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !term.IsTerminal(int(os.Stdin.Fd())) || !term.IsTerminal(int(os.Stdout.Fd())) {
 				return errors.New("interactive mode requires a terminal; use plib init, add, list, show or copy")
@@ -255,6 +259,7 @@ func NewCommand() *cobra.Command {
 		return a.repo.Locked(a.repo.RemoveRemote)
 	}})
 	root.AddCommand(remoteCmd)
+	root.AddCommand(newSkillsCommand())
 	return root
 }
 

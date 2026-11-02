@@ -19,7 +19,7 @@ vet:
 	go vet ./...
 
 fmt:
-	gofmt -w cmd internal
+	gofmt -w cmd internal skills
 
 clean:
 	rm -f plib plib.exe
