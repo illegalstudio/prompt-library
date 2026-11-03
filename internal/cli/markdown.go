@@ -51,7 +51,7 @@ func (m model) viewerView() string {
 	title := accent.Render(ansi.Truncate(strings.Join(strings.Fields(m.viewing.Title), " "), max(1, m.width-4), "..."))
 	footer := []string{
 		fmt.Sprintf("Up/Down scroll  |  PgUp/PgDn page  |  Left/Right pan  %.0f%%", m.viewer.ScrollPercent()*100),
-		"Enter copy  |  Esc/v/q back",
+		"Enter copy  |  e edit  |  Esc/v/q back",
 	}
 	for i := range footer {
 		footer[i] = "  " + ansi.Truncate(footer[i], max(1, m.width-4), "...")

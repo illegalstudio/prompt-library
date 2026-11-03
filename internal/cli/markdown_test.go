@@ -73,6 +73,19 @@ func TestMarkdownViewPreservesSourceAndListState(t *testing.T) {
 			t.Fatalf("%s did not restore the list and its filter", back.String())
 		}
 	}
+	if !strings.Contains(m.View(), "e edit") {
+		t.Fatal("viewer does not advertise the edit shortcut")
+	}
+	next, editCmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("e")})
+	editing := next.(model)
+	if editCmd == nil || editing.mode != "title" || editing.viewing != nil || editing.editing == nil || editing.editing.ID != p.ID || editing.title.Value() != p.Title || editing.body.Value() != markdownExample || !editing.title.Focused() {
+		t.Fatal("e did not open the viewed prompt's original source in the editor")
+	}
+	next, _ = editing.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	cancelled := next.(model)
+	if cancelled.mode != "browse" || cancelled.cursor != 1 || cancelled.search.Value() != "note" || !cancelled.all {
+		t.Fatal("discarding edits did not preserve the list and its filter")
+	}
 	after, err := os.ReadFile(m.a.store.Path(p))
 	if err != nil || !bytes.Equal(before, after) {
 		t.Fatal("viewing changed the stored source or usage metadata")

@@ -292,8 +292,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "end", "G":
 				m.viewer.GotoBottom()
 				return m, nil
-			case "enter":
-				// Use the list's copy action so clipboard and fallback keep the exact source.
+			case "enter", "e":
+				// Use the list's copy and edit actions with the original source.
 				m.mode = "browse"
 				m.viewing = nil
 			default:
