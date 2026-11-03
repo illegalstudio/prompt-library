@@ -137,6 +137,7 @@ Each prompt occupies one compact row with its title, scope and body preview. Ent
 | `a` | Add a prompt |
 | `s` or `/` | Search titles and bodies |
 | `Enter` | Copy the selected prompt |
+| `v` | View the selected prompt as rendered Markdown |
 | `e` | Edit the selected prompt |
 | `d` | Delete the selected prompt after a `[y/N]` confirmation |
 | `Tab` | Toggle current project/global prompts and every project |
@@ -146,6 +147,8 @@ Each prompt occupies one compact row with its title, scope and body preview. Ent
 | `q`, `Esc` | Quit |
 
 Press `d` in the list to delete the selected prompt. Confirm with `y` or `Y`; `Enter`, `n`, `N`, or `Esc` cancel. Deletions are committed and synchronized through Git. If the prompt changed while confirmation was open, or remote changes restore it during synchronization, review the updated prompt before confirming deletion again.
+
+Press `v` to read the selected prompt as Markdown, including headings, emphasis, lists, tables, links and syntax-highlighted code blocks. Use `Up`/`Down` or `j`/`k` to scroll, `PageUp`/`PageDown` to change pages, and `Home`/`End` or `g`/`G` to jump to the start/end. `Left`/`Right` scroll wide tables and code. The view adapts when you resize the terminal. `Esc`, `q` or `v` return to the same list selection and search; `Enter` copies the original Markdown and returns to the list, with the usual manual-copy fallback if the clipboard is unavailable. Viewing does not change the prompt or its last usage date. Editing, clipboard copy and `plib show` retain the exact source text.
 
 In the editor, enter a title, press `Enter`, then write or paste a multiline body. `Enter` inserts newlines, `Ctrl+T` returns to the title, `Tab` toggles global/project scope, `Ctrl+S` saves, and `Esc` discards the draft. Prompts default to global scope. The initial list shows your saved prompts, with the most recently copied first; a new library starts empty.
 

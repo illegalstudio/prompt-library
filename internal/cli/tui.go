@@ -28,23 +28,26 @@ type resultMsg struct {
 	done    bool
 }
 type model struct {
-	a             app
-	mode          string
-	prompts       []store.Prompt
-	cursor        int
-	all           bool
-	search        textinput.Model
-	title         textinput.Model
-	remote        textinput.Model
-	body          textarea.Model
-	manual        viewport.Model
-	projectScope  bool
-	editing       *store.Prompt
-	deleting      *store.Prompt
-	busy          bool
-	quitting      bool
-	status        string
-	width, height int
+	a              app
+	mode           string
+	prompts        []store.Prompt
+	cursor         int
+	all            bool
+	search         textinput.Model
+	title          textinput.Model
+	remote         textinput.Model
+	body           textarea.Model
+	manual         viewport.Model
+	viewer         viewport.Model
+	viewing        *store.Prompt
+	darkBackground bool
+	projectScope   bool
+	editing        *store.Prompt
+	deleting       *store.Prompt
+	busy           bool
+	quitting       bool
+	status         string
+	width, height  int
 }
 
 func newModel(a app) model {
@@ -63,7 +66,8 @@ func newModel(a app) model {
 	body.MaxHeight = 0
 	body.ShowLineNumbers = false
 	body.SetHeight(10)
-	m := model{a: a, mode: "browse", search: search, title: title, remote: remote, body: body, width: 80, height: 24, manual: viewport.New(74, 12)}
+	m := model{a: a, mode: "browse", search: search, title: title, remote: remote, body: body, width: 80, height: 24, manual: viewport.New(74, 12), viewer: viewport.New(76, 14), darkBackground: lipgloss.HasDarkBackground()}
+	m.viewer.SetHorizontalStep(4)
 	m.prompts, _, _ = a.store.List(a.project, "", false)
 	if !a.repo.Configured() {
 		m.mode = "setup"
@@ -177,6 +181,11 @@ func (m *model) resize() {
 	m.body.SetHeight(max(3, m.height-12))
 	m.manual.Width = w
 	m.manual.Height = max(3, m.height-9)
+	m.viewer.Width = max(1, m.width-4)
+	m.viewer.Height = max(1, m.height-10)
+	if m.viewing != nil {
+		m.renderViewer()
+	}
 }
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
@@ -270,6 +279,28 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			var cmd tea.Cmd
 			m.manual, cmd = m.manual.Update(msg)
 			return m, cmd
+		}
+		if m.mode == "view" {
+			switch key {
+			case "esc", "q", "v":
+				m.mode = "browse"
+				m.viewing = nil
+				return m, nil
+			case "home", "g":
+				m.viewer.GotoTop()
+				return m, nil
+			case "end", "G":
+				m.viewer.GotoBottom()
+				return m, nil
+			case "enter":
+				// Use the list's copy action so clipboard and fallback keep the exact source.
+				m.mode = "browse"
+				m.viewing = nil
+			default:
+				var cmd tea.Cmd
+				m.viewer, cmd = m.viewer.Update(msg)
+				return m, cmd
+			}
 		}
 		if m.mode == "delete" {
 			switch key {
@@ -378,6 +409,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.projectScope = p.Project != ""
 				return m, textinput.Blink
 			}
+		case "v":
+			if !m.busy && len(m.prompts) > 0 {
+				p := m.prompts[m.cursor]
+				m.viewing = &p
+				m.mode = "view"
+				m.renderViewer()
+				m.viewer.GotoTop()
+			}
 		case "tab":
 			if m.busy {
 				return m, nil
@@ -453,6 +492,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.body, cmd = m.body.Update(msg)
 	case "search":
 		m.search, cmd = m.search.Update(msg)
+	case "view":
+		m.viewer, cmd = m.viewer.Update(msg)
 	}
 	return m, cmd
 }
@@ -564,6 +605,8 @@ func (m model) View() string {
 		b.WriteString("  Scope: " + accent.Render(label) + scopeNote + "\n\n  Title\n  " + m.title.View() + "\n\n" + m.body.View() + "\n" + muted.Render("  Enter: next field / newline  |  Tab: scope  |  Ctrl+S: save\n  Ctrl+T: title  |  Esc: discard"))
 	} else if m.mode == "manual" {
 		b.WriteString("  Clipboard unavailable. Select and copy the text manually.\n\n" + m.manual.View() + "\n\n" + muted.Render("  Up/Down: scroll  |  Enter/Esc: back"))
+	} else if m.mode == "view" && m.viewing != nil {
+		b.WriteString(m.viewerView())
 	} else {
 		scope := "Global"
 		if m.a.project != "" {
@@ -593,7 +636,7 @@ func (m model) View() string {
 			b.WriteString(fmt.Sprintf("\n  Delete %q? [y/N]\n", preview(m.deleting.Title, max(5, m.width-25))))
 			b.WriteString(muted.Render("  y: delete  |  N / Enter / Esc: cancel"))
 		} else {
-			b.WriteString("\n" + muted.Render("  a add  |  s search  |  Enter copy  |  e edit  |  d delete\n  Tab all/current  |  r sync  |  Up/Down select  |  q quit"))
+			b.WriteString("\n" + muted.Render("  a add  |  s search  |  Enter copy  |  v view  |  e edit  |  d delete\n  Tab all/current  |  r sync  |  Up/Down select  |  q quit"))
 		}
 	}
 	if m.status != "" {
