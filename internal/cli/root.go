@@ -35,7 +35,7 @@ func NewCommand() *cobra.Command {
 	var home string
 	var a app
 	root := &cobra.Command{
-		Use: "plib", Short: "Your prompt library, wherever you work",
+		Use: "plib", Short: "Project Library: your prompts, wherever you work",
 		Version:      version.Version + " (" + version.Commit + ")",
 		SilenceUsage: true, SilenceErrors: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {

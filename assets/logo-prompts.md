@@ -1,4 +1,4 @@
-# plib logo assets
+# Project Library logo assets
 
 Generated with the built-in `image_gen` tool. All three PNGs are 1254 by 1254 pixels.
 

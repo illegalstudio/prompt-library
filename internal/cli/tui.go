@@ -590,7 +590,7 @@ func (m model) save() (tea.Model, tea.Cmd) {
 }
 func (m model) View() string {
 	var b strings.Builder
-	b.WriteString(accent.Render("  plib") + muted.Render("  your prompts, at hand") + "\n\n")
+	b.WriteString(accent.Render("  Project Library") + muted.Render("  plib") + "\n\n")
 	if m.mode == "setup" {
 		b.WriteString("  Welcome. Your library lives at " + m.a.store.Root + "\n\n  Git remote (optional)\n  " + m.remote.View() + "\n\n" + muted.Render("  Enter: continue  |  Leave blank: local only  |  Esc: quit"))
 	} else if m.mode == "title" || m.mode == "body" {

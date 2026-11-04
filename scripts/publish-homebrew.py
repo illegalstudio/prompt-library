@@ -37,7 +37,7 @@ def render_formula(tag, dist):
 
     formula = [
         "class Plib < Formula",
-        '  desc "A prompt library for your terminal"',
+        '  desc "Save and reuse prompts with Project Library"',
         '  homepage "https://github.com/illegalstudio/prompt-library"',
         f'  version "{version}"',
         '  license "MIT"',
@@ -67,7 +67,7 @@ def render_formula(tag, dist):
         "",
         "  test do",
         '    assert_match version.to_s, shell_output("#{bin}/plib --version")',
-        '    assert_match "prompt library", shell_output("#{bin}/plib --help")',
+        '    assert_match "Project Library", shell_output("#{bin}/plib --help")',
         '    assert_match "skills", shell_output("#{bin}/plib --help")',
         "  end",
         "end",

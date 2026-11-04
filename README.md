@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="assets/logo-transparent.png" alt="Prompt Library logo" width="180" height="180">
+  <img src="assets/logo-transparent.png" alt="Project Library logo" width="180" height="180">
 </p>
 
-<h1 align="center">Prompt Library</h1>
+<h1 align="center">Project Library</h1>
 
 <p align="center">
   <em>Your prompts, wherever you work.</em>
@@ -20,7 +20,7 @@
 </p>
 
 <p align="center">
-  <code>plib</code> is a small Go CLI for building and reusing a prompt library. Search by title or body, keep global and project prompts in sync with Git, and copy the prompt you need straight to your clipboard.
+  <strong>Project Library</strong> (<code>plib</code>) is a small Go CLI for building and reusing a prompt library. Search by title or body, keep global and project prompts in sync with Git, and copy the prompt you need straight to your clipboard.
 </p>
 
 <p align="center">

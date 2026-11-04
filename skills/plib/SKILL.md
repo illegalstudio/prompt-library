@@ -1,9 +1,9 @@
 ---
 name: plib
-description: Manage and reuse the user's prompt library through the plib CLI. Use when asked to find, read, save, copy, organize or synchronize stored prompts, or manage the plib agent skill. Ordinary prompt drafting without saving to a library does not need this skill.
+description: Manage and reuse prompts with Project Library through the plib CLI. Use when asked to find, read, save, copy, organize or synchronize stored prompts, or manage the plib agent skill. Ordinary prompt drafting without saving to a library does not need this skill.
 ---
 
-# Operate plib
+# Project Library (plib)
 
 Use the installed `plib` binary and `plib <command> --help` as the command reference.
 

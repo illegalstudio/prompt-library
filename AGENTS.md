@@ -1,4 +1,4 @@
-# Prompt Library
+# Project Library
 
 Go CLI named `plib`, module `github.com/illegalstudio/prompt-library`.
 
